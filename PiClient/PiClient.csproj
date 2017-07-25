@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+    <NoWarn>NU1701</NoWarn>    
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="settings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <BuildAction>Content</BuildAction>
+      <CopyToOutput>true</CopyToOutput>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
+    <PackageReference Include="Safern.Hub.ReaderSender" Version="1.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>	
+    <PackageReference Include="Pi.IO.Components" Version="0.0.1-preview1" />
+  </ItemGroup>  
+
+</Project>
