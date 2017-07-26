@@ -34,6 +34,19 @@ namespace Safern.Hub
         [JsonProperty("HubUri")]        
         public string HubUri { get; set; }
 
+        [JsonProperty("NeedsDeviceSetup")]
+        public bool NeedsDeviceSetup { get; set; }
+
+        public void SaveConfigToFile(string file)
+        {
+            if (string.IsNullOrEmpty(file))
+            {
+                throw new ArgumentNullException(nameof(file), "Argument can't be null or empty");
+            }
+
+            File.WriteAllText(file, JsonConvert.SerializeObject(this, Formatting.Indented));
+        }
+
         public static HubConfiguration GetConfiguration(string settingsFile)
         {
             if (string.IsNullOrEmpty(settingsFile))

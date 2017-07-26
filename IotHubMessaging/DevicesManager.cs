@@ -16,25 +16,16 @@ namespace Safern.Hub.Devices
             _registryManager = RegistryManager.CreateFromConnectionString(GetConnectionString());
         }
 
-        public async Task<string> AddDeviceAsync(string deviceName)
+        public async Task<string> AddDeviceOrGetKeyAsync(string deviceName)
         {
+            Device device;
             try
             {
-                var device = await _registryManager.AddDeviceAsync(new Device(deviceName));
-                return device.Authentication.SymmetricKey.PrimaryKey;
+                device = await _registryManager.AddDeviceAsync(new Device(deviceName));
             }
             catch (DeviceAlreadyExistsException)
             {
-                throw new ArgumentException($"The device: {deviceName} already exists, if you want to get its key call GetDeviceKey");
-            }
-        }
-
-        public async Task<string> GetDeviceKey(string deviceName)
-        {
-            var device = await _registryManager.GetDeviceAsync(deviceName);
-            if (device == null)
-            {
-                throw new ArgumentException($"The device: {deviceName} doesn't exist, please add it through AddDeviceAsync");
+                device = await _registryManager.GetDeviceAsync(deviceName);
             }
 
             return device.Authentication.SymmetricKey.PrimaryKey;

@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <AssemblyName>Safern.Hub.Messaging</AssemblyName>
     <PackageId>Safern.Hub.ReaderSender</PackageId>
-    <PackageVersion>1.0.4</PackageVersion>
+    <PackageVersion>1.0.5</PackageVersion>
     <Authors>Santiago Fernandez Madero</Authors>
     <Description>Library to read and send messages from/to an Iot Azure Hub.</Description>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>

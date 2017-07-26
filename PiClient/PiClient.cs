@@ -19,9 +19,10 @@ namespace PiClient
 
             HubConfiguration configuration = HubConfiguration.GetConfiguration("settings.json");
 
-            DevicesManager deviceManager = new DevicesManager(configuration);
-
-            configuration.DeviceKey = deviceManager.GetDeviceKey(configuration.DeviceId).Result;
+            if (configuration.NeedsDeviceSetup)
+            {                
+                RunDeviceSetup(ref configuration);
+            }
 
             CancellationTokenSource cts = new CancellationTokenSource();
 
@@ -74,6 +75,26 @@ namespace PiClient
                 messageSender.SendMessageAsync($"LED state: {ledState}", "evenQueue");
                 Thread.Sleep(1000);
             }
+        }
+
+        private static void RunDeviceSetup(ref HubConfiguration configuration)
+        {
+            DevicesManager deviceManager = new DevicesManager(configuration);
+            
+            Console.WriteLine("Hello to AlexaDotnetPi in order to setup your smart hub we need to setup your device name.");
+            Console.WriteLine();
+            Console.WriteLine("In order to do so, we need to set it to be your account id that got created for you when you linked the skill with your Alexa.");
+            Console.WriteLine();
+            Console.WriteLine("To get it please go to our-website.com, login and in the top page you'll see the account id. Copy that id and insert it here:\n");
+            string deviceName = Console.ReadLine();
+
+            if (string.IsNullOrEmpty(deviceName))
+                throw new ArgumentNullException(nameof(deviceName), "The device name can't be empty");
+
+            configuration.DeviceId = deviceName;
+            configuration.DeviceKey = deviceManager.AddDeviceOrGetKeyAsync(deviceName).Result;
+            configuration.NeedsDeviceSetup = false;
+            configuration.SaveConfigToFile("settings.json");
         }
     }
 }
