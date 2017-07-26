@@ -12,6 +12,10 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)\..\Common\Models.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
     <PackageReference Include="Safern.Hub.ReaderSender" Version="1.0.5" />
     <PackageReference Include="Pi.IO.Components" Version="0.0.1-preview1" />

@@ -51,7 +51,7 @@ namespace PiClient
         public bool ReadPirPin()
         {
             var pirState = pirPin.Read();
-            Console.WriteLine("Pir Pin Value: " + pirState.ToString());
+            //Console.WriteLine("Pir Pin Value: " + pirState.ToString());
             return pirState;
         }
 

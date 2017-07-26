@@ -8,26 +8,38 @@ using Safern.Hub.Sender;
 using Pi.IO;
 using Pi.IO.GeneralPurpose;
 using Safern.Hub.Devices;
+using AlexaSkill.Models;
 
 namespace PiClient
 {
     class Program
     {
+        static PIState piState;
+
         static void Main(string[] args)
         {
+            //Instanciate device
+            Device pi = new Device();
+            piState = new PIState();
+
+            //Flag for main loop
             bool isRunning = true;
 
+            //Config
             HubConfiguration configuration = HubConfiguration.GetConfiguration("settings.json");
-
             if (configuration.NeedsDeviceSetup)
             {                
                 RunDeviceSetup(ref configuration);
             }
 
-            CancellationTokenSource cts = new CancellationTokenSource();
+            //Setup sender            
+            MessageSender messageSender = new MessageSender(configuration);
 
+            //Setup reader
+            CancellationTokenSource cts = new CancellationTokenSource();
             MessageReader messageReader = new MessageReader(configuration, cts.Token);
 
+            //Add delegate to stop
             System.Console.CancelKeyPress += (s, e) =>
             {
                 isRunning = false;
@@ -35,46 +47,92 @@ namespace PiClient
                 Console.WriteLine("Exiting.");
             };
 
+            //Delegate to read incoming messages
             messageReader.OnMessageReceived += (s, e) =>
             {
-                var obj = JsonConvert.DeserializeObject<dynamic>(e.Data);
-                Console.WriteLine();
-                Console.WriteLine($"{DateTime.Now} > Message Received: ");
-                Console.WriteLine($"     Message: {obj.message}");
-                Console.WriteLine($"     Queue: {obj.queue}");
-                Console.WriteLine();
+                Message message = JsonConvert.DeserializeObject<Message>(e.Data);
+                
+                //For SET
+                if(message.requestType==RequestType.SET)
+                {
+                    Console.WriteLine($"{DateTime.Now} Request to SET to : {message.state} (current {piState.ledState})");
+                    if(piState.ledState==message.state)
+                    {
+                        //send error state
+                        Console.WriteLine($"{DateTime.Now} Sending Error state (already {message.state}");
+                        message.returnCode=1;
+                        messageSender.SendMessageAsync(JsonConvert.SerializeObject(message), "DefaultQueue");
+                        return;
+                    }
+
+                    //Set state 
+                    piState.ledState=message.state;
+                    pi.SetLEDPin(piState.ledState);
+
+                    //Now send response
+                    SendLEDState(messageSender,piState);
+                }
+
+                //For GET
+                if(message.requestType==RequestType.GET)
+                {
+                    Console.WriteLine($"{DateTime.Now} Request to GET current LED state");
+                    SendLEDState(messageSender,piState);
+                }
             };
 
-            messageReader.RunAsync("evenQueue");
+            Console.WriteLine("Starting...");
 
-            MessageSender messageSender = new MessageSender(configuration);
+            //Start reading
+            messageReader.RunAsync("DefaultQueue");
 
-            //Instanciate device
-            Device pi = new Device();
-            bool ledState = false;
-
-            //Loop 
+            //Loop for motion sensor
+            bool stateChanged=false;
             while (isRunning)
             {
                 //Read pir and led state
-                bool pirState = pi.ReadPirPin();
-
-                //Super simple state machine
-                if (pirState && !ledState)
+                if(pi.ReadPirPin() != piState.pirState)
                 {
-                    ledState = true;
-                    pi.SetLEDPin(ledState);
+                    piState.pirState = pi.ReadPirPin();
+                    stateChanged=true;
                 }
-                else if (!pirState && ledState)
+
+                //Super simple state machine to turn LED on or off
+                if (piState.pirState && stateChanged)
                 {
-                    ledState = false;
-                    pi.SetLEDPin(ledState);
+                    piState.ledState = true;
+                    pi.SetLEDPin(piState.ledState);
+                    Console.WriteLine($"{DateTime.Now} Motion Dected.  Turning LED on");
+                }
+                else if (!piState.pirState && stateChanged)
+                {
+                    piState.ledState = false;
+                    pi.SetLEDPin(piState.ledState);
+                    Console.WriteLine($"{DateTime.Now} Motion no longer detected.  Turning LED off");
                 }                
 
-                Console.WriteLine("Sent Message");
-                messageSender.SendMessageAsync($"LED state: {ledState}", "evenQueue");
+                //Send response only if state changed
+                if(stateChanged)
+                {
+                    stateChanged=false;
+                    SendLEDState(messageSender,piState);
+                }
+
+                //Wait around for a bit
                 Thread.Sleep(1000);
             }
+        }
+
+        private static void SendLEDState(MessageSender messageSender,PIState piState)
+        {
+            Console.WriteLine($"{DateTime.Now} Sending LED state {piState.ledState}");
+            Message newMsg = new Message
+            {
+                messageType=MessageType.RESPONSE,
+                state=piState.ledState,
+                returnCode=0
+            };
+            messageSender.SendMessageAsync(JsonConvert.SerializeObject(newMsg), "DefaultQueue");
         }
 
         private static void RunDeviceSetup(ref HubConfiguration configuration)
@@ -96,5 +154,11 @@ namespace PiClient
             configuration.NeedsDeviceSetup = false;
             configuration.SaveConfigToFile("settings.json");
         }
+    }
+
+    class PIState
+    {
+        public bool ledState {get; set;}
+        public bool pirState {get; set;}
     }
 }
