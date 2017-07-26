@@ -5,6 +5,6 @@
     "SasKey": "",
     "SasKeyName":"iothubowner",
     "DeviceId":"myDevice",
-    "DeviceKey":"",
+    "DeviceKey":"not needed anymore",
     "HubUri" : "HackathonTestHub.azure-devices.net"
 }

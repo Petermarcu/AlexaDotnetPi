@@ -2,10 +2,12 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Safern.Hub;
 using Safern.Hub.Reader;
 using Safern.Hub.Sender;
 using Pi.IO;
 using Pi.IO.GeneralPurpose;
+using Safern.Hub.Devices;
 
 namespace PiClient
 {
@@ -15,9 +17,15 @@ namespace PiClient
         {
             bool isRunning = true;
 
+            HubConfiguration configuration = HubConfiguration.GetConfiguration("settings.json");
+
+            DevicesManager deviceManager = new DevicesManager(configuration);
+
+            configuration.DeviceKey = deviceManager.GetDeviceKey(configuration.DeviceId).Result;
+
             CancellationTokenSource cts = new CancellationTokenSource();
 
-            MessageReader messageReader = new MessageReader(cts.Token);
+            MessageReader messageReader = new MessageReader(configuration, cts.Token);
 
             System.Console.CancelKeyPress += (s, e) =>
             {
@@ -38,11 +46,8 @@ namespace PiClient
 
             messageReader.RunAsync("evenQueue");
 
-            MessageSender messageSender = new MessageSender();
+            MessageSender messageSender = new MessageSender(configuration);
 
-            int messageNumber = 1;
-
-         
             //Instanciate device
             Device pi = new Device();
             bool ledState = false;

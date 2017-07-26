@@ -16,7 +16,7 @@
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
-    <PackageReference Include="Safern.Hub.ReaderSender" Version="1.0.0" />
+    <PackageReference Include="Safern.Hub.ReaderSender" Version="1.0.4" />
   </ItemGroup>
 
   <ItemGroup>	
