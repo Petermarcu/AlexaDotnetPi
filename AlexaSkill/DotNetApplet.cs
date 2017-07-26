@@ -7,12 +7,20 @@ using System.Net;
 using System.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using AlexaSkill.Models;
+using Safern.Hub;
+using System.Threading;
+using Safern.Hub.Sender;
+using Safern.Hub.Devices;
 
 namespace AlexaSkill
 {
     public class DotNetApplet : SpeechletAsync
     {
         private string GetSensorStateIntentName = "GetSensorState";
+        private string SetSensorStateIntentName = "SetSensorState";
+        private static HubConfiguration configuration = HubConfiguration.GetConfiguration("settings.json");
+        private CancellationTokenSource cts = new CancellationTokenSource();
         /// <summary>
         /// Creates and returns the visual and spoken response with shouldEndSesion flag
         /// </summary>
@@ -42,6 +50,25 @@ namespace AlexaSkill
             return response;
         }
 
+        private async Task<int> SendMessageToHubAsync(bool _state, RequestType _requestType, string deviceId)
+        {
+            Message message = new Message
+            {
+                messageType = MessageType.REQUEST,
+                state = _state,
+                requestType = _requestType,
+                returnCode = 0
+            };
+            string jsonObject = JsonConvert.SerializeObject(message);
+            configuration.DeviceId = deviceId;
+            DevicesManager deviceManager = new DevicesManager(configuration);
+            configuration.DeviceKey = await deviceManager.AddDeviceOrGetKeyAsync(deviceId);
+            MessageSender messageSender = new MessageSender(configuration);
+
+            messageSender.SendMessageAsync(jsonObject);
+            return 0;
+        }
+
         private SpeechletResponse GetWelcomeResponse()
         {
             var output = "Welcome to the Hackathon Alexa app. Please request the action you want us to take.";
@@ -63,7 +90,7 @@ namespace AlexaSkill
             {
                 string result = streamReader.ReadToEnd();
                 JObject json = JsonConvert.DeserializeObject<JObject>(result);
-                userId = json.Value<string>("name");
+                userId = json.Value<string>("id");
                 if (string.IsNullOrEmpty(userId))
                     throw new SpeechletException("Could not login with the credentials.");
             }
@@ -71,7 +98,7 @@ namespace AlexaSkill
             return userId;
         }
 
-        public override Task<SpeechletResponse> OnIntentAsync(IntentRequest intentRequest, Session session)
+        public async override Task<SpeechletResponse> OnIntentAsync(IntentRequest intentRequest, Session session)
         {
             if (string.IsNullOrEmpty(session.User.AccessToken))
                 throw new SpeechletException("User must link account before accesing these types of commands.");
@@ -83,10 +110,24 @@ namespace AlexaSkill
 
             if (GetSensorStateIntentName.Equals(intentName))
             {
-               
-                return Task.FromResult(BuildSpeechletResponse("Get state of sensor", $"Hello {userId}, nice to see you here", true));
+                var result = await SendMessageToHubAsync(true, RequestType.GET, userId);
+                return BuildSpeechletResponse("Get state of sensor", $"A message has been sent to query your sensor", true);
             }
-
+            if (SetSensorStateIntentName.Equals(intentName))
+            {
+                Slot state;
+                if (intent.Slots.TryGetValue("State", out state))
+                {
+                    bool lightState;
+                    if (state.Value.ToLower().Equals("off"))
+                        lightState = false;
+                    else
+                        lightState = true;
+                    var result = await SendMessageToHubAsync(lightState, RequestType.SET, userId);
+                    return BuildSpeechletResponse("Set state of sensor", $"A message has been sent to set your sensor to {state.Value}", true);
+                }
+                throw new SpeechletException("Could not understand the state of your sensor.");
+            }
             throw new SpeechletException("Invalid Intent");
         }
 
