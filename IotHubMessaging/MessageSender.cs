@@ -1,6 +1,6 @@
 using System;
 using System.Text;
-using Microsoft.Azure.Devices.Client;
+using Microsoft.Azure.Devices;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -8,25 +8,28 @@ namespace Safern.Hub.Sender
 {
     public class MessageSender
     {
-        private readonly DeviceClient _deviceClient;
+        private readonly ServiceClient _serviceClient; 
 
         private readonly HubConfiguration _configuration;
 
         public MessageSender(HubConfiguration configuration)
         {
             _configuration = configuration;
-            _deviceClient = DeviceClient.Create(_configuration.HubUri, new DeviceAuthenticationWithRegistrySymmetricKey(_configuration.DeviceId, _configuration.DeviceKey), TransportType.Mqtt);
+            _serviceClient = ServiceClient.CreateFromConnectionString(GetConnectionString());
         }
 
-        public async void SendMessageAsync(string message, string queue)
+        public async void SendMessageAsync(string message)
         {
-            JObject jsonObject = JObject.Parse(message);
-            jsonObject.Add(new JProperty("queue", queue));
-            var messageObject = new Message(Encoding.UTF8.GetBytes(jsonObject.ToString(Formatting.None)));
+            var messageObject = new Message(Encoding.UTF8.GetBytes(message));
             
-            await _deviceClient.SendEventAsync(messageObject);
+            await _serviceClient.SendAsync(_configuration.DeviceId, messageObject);
 
-            Console.WriteLine($"{DateTime.Now} > Sending message: {jsonObject.ToString(Formatting.None)}");
+            Console.WriteLine($"{DateTime.Now} > Sending message: {message}");
+        }
+
+        private string GetConnectionString()
+        {
+            return $"HostName={_configuration.HubUri};SharedAccessKeyName={_configuration.SasKeyName};SharedAccessKey={_configuration.SasKey}";
         }
     }
 }

@@ -3,15 +3,14 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.EventHubs;
+using Microsoft.Azure.Devices.Client;
 
 namespace Safern.Hub.Reader
 {
     public class MessageReader
     {
-        private EventHubClient _eventHubClient;
         private readonly CancellationToken _ct;
-
+        private readonly DeviceClient _deviceClient;
         private readonly HubConfiguration _configuration;
 
         public delegate void MessageReceivedHandler(object sender, MessageEventArgs e);
@@ -22,62 +21,28 @@ namespace Safern.Hub.Reader
         {
             _configuration = configuration;
             _ct = ct;
-            Init();
+            _deviceClient = DeviceClient.Create(_configuration.HubUri, new DeviceAuthenticationWithRegistrySymmetricKey(_configuration.DeviceId, _configuration.DeviceKey), TransportType.Mqtt);
         }
 
-        private void Init()
+        public async void RunAsync()
         {
-
-            var connection = new EventHubsConnectionStringBuilder(_configuration.ConnectionString)
-            {
-                EntityPath = _configuration.HubName,
-                SasKey = _configuration.SasKey,
-                SasKeyName = _configuration.SasKeyName
-            };
-
-            _eventHubClient = EventHubClient.CreateFromConnectionString(connection.ToString());
+            await ReadMessagesAsync();
         }
 
-        public async void RunAsync(string queue)
+        private async Task ReadMessagesAsync()
         {
-            string messageFilter = $"\"queue\":\"{queue}\"";
-            await Task.Run(() => { Run(messageFilter); });
-        }
-
-        private void Run(string messageFilter)
-        {
-            Console.WriteLine("Receiving Messages.");
-            
-            var partitions = _eventHubClient.GetRuntimeInformationAsync().GetAwaiter().GetResult().PartitionIds;
-
-            var tasks = new List<Task>();
-            foreach (string partition in partitions)
-            {
-                tasks.Add(ReadMessagesAsync(partition, messageFilter));
-            }
-
-            Task.WaitAll(tasks.ToArray());
-        }
-
-        private async Task ReadMessagesAsync(string partition, string messageFilter)
-        {
-            var eventHubReceiver = _eventHubClient.CreateReceiver("$Default", partition, DateTime.UtcNow);
             while (true)
             {
                 if (_ct.IsCancellationRequested) break;
-                var eventData = await eventHubReceiver.ReceiveAsync(10);
+                var eventData = await _deviceClient.ReceiveAsync();
 
                 if (eventData == null) continue;
 
-                foreach (var item in eventData)
-                {
-                    string data = Encoding.UTF8.GetString(item.Body.Array);
-                    var args = new MessageEventArgs(data);
-                    if (data.Contains(messageFilter))
-                    {
-                        OnMessage(args);
-                    }
-                }
+                string data = Encoding.ASCII.GetString(eventData.GetBytes());
+                var args = new MessageEventArgs(data);
+                OnMessage(args);
+
+                await _deviceClient.CompleteAsync(eventData);
             }
         }
 
