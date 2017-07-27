@@ -3,7 +3,7 @@
     "windowsAuthentication": false,
     "anonymousAuthentication": true,
     "iisExpress": {
-      "applicationUrl": "http://localhost:3877/",
+      "applicationUrl": "http://localhost:2145/",
       "sslPort": 0
     }
   },
@@ -16,12 +16,7 @@
       }
     },
     "AlexaSkill": {
-      "commandName": "Project",
-      "launchBrowser": true,
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      },
-      "applicationUrl": "http://localhost:3878/"
+      "commandName": "Project"
     }
   }
 }
