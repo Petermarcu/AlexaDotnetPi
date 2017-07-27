@@ -52,39 +52,43 @@ namespace PiClient
             {
                 Message message = JsonConvert.DeserializeObject<Message>(e.Data);
                 
-                //For SET
-                if(message.requestType==RequestType.SET)
+                if(message.messageType==MessageType.REQUEST)
                 {
-                    Console.WriteLine($"{DateTime.Now} Request to SET to : {message.state} (current {piState.ledState})");
-                    if(piState.ledState==message.state)
+                    //For SET
+                    if(message.requestType==RequestType.SET)
                     {
-                        //send error state
-                        Console.WriteLine($"{DateTime.Now} Sending Error state (already {message.state}");
-                        message.returnCode=1;
-                        messageSender.SendMessageAsync(JsonConvert.SerializeObject(message), "DefaultQueue");
-                        return;
+                        Console.WriteLine($"{DateTime.Now} Request to SET to : {message.state} (current {piState.ledState})");
+                        if(piState.ledState==message.state)
+                        {
+                            //send error state
+                            Console.WriteLine($"{DateTime.Now} Sending Error state (already {message.state}");
+                            message.messageType=MessageType.RESPONSE;
+                            message.returnCode=1;
+                            messageSender.SendMessageAsync(JsonConvert.SerializeObject(message));
+                            return;
+                        }
+
+                        //Set state 
+                        piState.ledState=message.state;
+                        pi.SetLEDPin(piState.ledState);
+
+                        //Now send response
+                        SendLEDState(messageSender,piState);
                     }
 
-                    //Set state 
-                    piState.ledState=message.state;
-                    pi.SetLEDPin(piState.ledState);
-
-                    //Now send response
-                    SendLEDState(messageSender,piState);
-                }
-
-                //For GET
-                if(message.requestType==RequestType.GET)
-                {
-                    Console.WriteLine($"{DateTime.Now} Request to GET current LED state");
-                    SendLEDState(messageSender,piState);
+                    //For GET
+                    if(message.requestType==RequestType.GET)
+                    {
+                        Console.WriteLine($"{DateTime.Now} Request to GET current LED state");
+                        SendLEDState(messageSender,piState);
+                    }
                 }
             };
 
             Console.WriteLine("Starting...");
 
             //Start reading
-            messageReader.RunAsync("DefaultQueue");
+            messageReader.RunAsync();
 
             //Loop for motion sensor
             bool stateChanged=false;
@@ -132,7 +136,7 @@ namespace PiClient
                 state=piState.ledState,
                 returnCode=0
             };
-            messageSender.SendMessageAsync(JsonConvert.SerializeObject(newMsg), "DefaultQueue");
+            messageSender.SendMessageAsync(JsonConvert.SerializeObject(newMsg));
         }
 
         private static void RunDeviceSetup(ref HubConfiguration configuration)
