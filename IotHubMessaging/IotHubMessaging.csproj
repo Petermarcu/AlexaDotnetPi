@@ -11,6 +11,7 @@
     <PackageReleaseNotes>First release</PackageReleaseNotes>
     <Copyright>Copyright 2017 (c) Santiago Fernandez Madero. All rights reserved.</Copyright>
     <PackageTags></PackageTags>
+    <NoWarn>NU1701</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
