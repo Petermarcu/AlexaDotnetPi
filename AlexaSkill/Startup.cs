@@ -29,6 +29,7 @@ namespace SmartHomeApplet
             }
 
             builder.AddEnvironmentVariables();
+            builder.AddEnvironmentVariables("APPSETTING_");
             Configuration = builder.Build();
         }
 
